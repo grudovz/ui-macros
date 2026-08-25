@@ -10,6 +10,8 @@ import sys
 
 from pywinauto import Desktop
 
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 if __name__ == "__main__":
     title_fragment = sys.argv[1]
     window = Desktop(backend="uia").window(title_re=f".*{title_fragment}.*")

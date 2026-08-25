@@ -1,15 +1,21 @@
 """Cut the current selection (e.g. in Notepad/WordPad), switch to VS Code,
 and paste it into the chat box.
 
-CHAT_BOX_CRITERIA is a placeholder - run
-`python inspect_window.py "Visual Studio Code"` once, find the chat input's
-real control_type/title/auto_id in the output, and update it below.
+CHAT_BOX_CRITERIA is a chain of nested criteria (see automation.find_element_chain):
+the chat panel's monaco-editor input has no title/auto_id of its own and shares
+its class_name with every other editor instance in the window, so it's scoped
+through the sessions panel and the currently-active session tab first. Found via
+`python element_finder.py` (hover + press P for the ancestor chain).
 """
 
 import automation
 
-VSCODE_TITLE_RE = ".*Visual Studio Code.*"
-CHAT_BOX_CRITERIA = {"control_type": "Edit", "title": "Chat"}
+VSCODE_TITLE_RE = ".*Agents.*"
+CHAT_BOX_CRITERIA = [
+    {"auto_id": "workbench.parts.sessions"},
+    {"control_type": "Group", "class_name_re": ".*is-active.*"},
+    {"control_type": "Text", "class_name_re": ".*monaco-editor.*"},
+]
 
 
 def paste_to_vscode_chat(prefix=None):

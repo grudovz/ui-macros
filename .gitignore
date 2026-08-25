@@ -15,3 +15,6 @@ __pycache__/
 # OS files
 .DS_Store
 Thumbs.db
+
+# element_finder.py capture output (scratch, per-session)
+element_finder_captures.txt

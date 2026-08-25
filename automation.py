@@ -20,12 +20,18 @@ pyautogui.FAILSAFE = True
 
 def focus_window(title_re, timeout=5):
     """Find a top-level window whose title matches `title_re` (regex, case-insensitive)
-    and bring it to the foreground. Returns the pywinauto window wrapper."""
+    and bring it to the foreground. Returns the pywinauto window wrapper.
+
+    visible_only=False because pywinauto's default (visible_only=True) relies on
+    the UIA "visible" property, which some Electron apps (e.g. Microsoft Teams)
+    report as False whenever the window isn't the current foreground/focused
+    window - even though it's genuinely open and switchable. Without this, a
+    background Teams window intermittently fails to resolve at all."""
     deadline = time.time() + timeout
     last_error = None
     while time.time() < deadline:
         try:
-            window = Desktop(backend="uia").window(title_re=title_re)
+            window = Desktop(backend="uia").window(title_re=title_re, visible_only=False)
             window.set_focus()
             return window
         except ElementNotFoundError as exc:
@@ -51,17 +57,49 @@ def find_element(window, timeout=3, **criteria):
         return None
 
 
-def click_element(window, criteria, image=None, coords=None, timeout=3):
+def find_element_chain(window, criteria_chain, timeout=3):
+    """Like find_element, but criteria_chain is a list of criteria dicts applied
+    as nested child_window() scopes - e.g. [{"auto_id": "parent"}, {"control_type": "Text"}]
+    finds a Text descendant of the auto_id="parent" descendant. Useful when no
+    single criteria dict is unique on its own (e.g. a control_type/class_name
+    shared by several sibling panels), but a stable ancestor is."""
+    try:
+        element = window
+        for criteria in criteria_chain:
+            element = element.child_window(**criteria)
+        element.wait("exists enabled visible", timeout=timeout)
+        return element
+    except Exception:
+        return None
+
+
+def click_element(window, criteria, image=None, coords=None, timeout=3, offset=None):
     """Click a UI element, trying progressively less reliable strategies until
     one works. Raises RuntimeError if none succeed.
 
-    criteria: dict of UIA lookup kwargs, e.g. {"control_type": "Edit", "title": "Chat"}
+    criteria: dict of UIA lookup kwargs (e.g. {"control_type": "Edit", "title": "Chat"}),
+    or a list of such dicts to be applied as a chain of nested scopes (see
+    find_element_chain) when no single dict is unique on its own.
     image: path to a template screenshot for pyautogui.locateCenterOnScreen fallback
     coords: (x, y) fixed-coordinate fallback
+    offset: (dx, dy) to click at (rect.left + dx, rect.top + dy) instead of the
+    element's rect center. Some Electron/Chromium controls (confirmed with
+    Teams' sidebar TreeItems) report a bounding rectangle whose bottom bleeds
+    down across unrelated content below them, making the auto-computed center
+    click land somewhere else entirely - use element_finder.py plus a
+    screenshot to find a safe offset near the control's real visible label
+    when this happens.
     """
-    element = find_element(window, timeout=timeout, **criteria)
+    if isinstance(criteria, list):
+        element = find_element_chain(window, criteria, timeout=timeout)
+    else:
+        element = find_element(window, timeout=timeout, **criteria)
     if element is not None:
-        element.click_input()
+        if offset is not None:
+            rect = element.rectangle()
+            pyautogui.click(rect.left + offset[0], rect.top + offset[1])
+        else:
+            element.click_input()
         return
 
     if image is not None:
