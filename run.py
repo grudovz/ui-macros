@@ -20,6 +20,7 @@ options turned out to be (both tried and reverted - see project memory).
 
 import ctypes
 import threading
+import time
 from ctypes import wintypes
 
 import pythoncom
@@ -35,6 +36,16 @@ HOTKEYS = {
     # ctrl+alt+<key> hotkey can fire unexpectedly whenever the user just
     # types an AltGr-layout character. ctrl+shift has no such ambiguity on
     # any layout.
+    #
+    # Never use "x" or "v" as the letter here (or for QUIT_HOTKEY below):
+    # automation.cut_selected_text()/paste_text() send synthetic ctrl+x/ctrl+v
+    # respectively, and TRIGGER_RELEASE_GRACE only reduces - it doesn't
+    # eliminate - the odds that one of those lands while the user's physical
+    # ctrl+shift from *this* hotkey is still held, which reads to the OS as
+    # ctrl+shift+x/v and fires whatever's registered on that combo (see
+    # QUIT_HOTKEY's comment for how this bit run.py before). "c" is unused by
+    # any macro today but would carry the same risk the moment something
+    # calls automation.copy().
     "ctrl+shift+a": paste_to_vscode_chat,
     "ctrl+shift+b": paste_to_vscode_chat_and_create,
     "ctrl+shift+m": refresh_chats,
@@ -43,7 +54,22 @@ HOTKEYS = {
     "ctrl+shift+d": lambda: paste_url_and_text("https://example.com", "sample text"),
 }
 
-QUIT_HOTKEY = "ctrl+shift+x"
+# Avoid "x": macros/vscode_chat.py's cut_selected_text() sends a synthetic
+# ctrl+x as its first action, and RegisterHotKey can't tell synthetic
+# (SendInput) key events from real ones. If the user is still physically
+# holding ctrl+shift from the ctrl+shift+<letter> hotkey that triggered the
+# macro when that synthetic ctrl+x lands, the OS sees ctrl+shift+x and
+# silently fires this quit hotkey instead - no exception, no error, the
+# GetMessageW loop just breaks and the process exits (confirmed: this is why
+# ctrl+shift+a intermittently made run.py "stop working" with nothing printed
+# - see TRIGGER_RELEASE_GRACE below for the other half of the fix).
+#
+# Also avoid "q": the user's separate AutoHotkey script (default.ahk) already
+# binds ctrl+shift+q (`^+q::`) - RegisterHotKey refuses to double-register a
+# combo another program already owns, so this fails fast at startup rather
+# than silently misbehaving, but it's still a non-starter. Check default.ahk
+# before picking any other combo here.
+QUIT_HOTKEY = "ctrl+shift+z"
 
 WM_HOTKEY = 0x0312
 MOD_ALT = 0x0001
@@ -101,6 +127,16 @@ def _run_with_com(macro):
         pythoncom.CoUninitialize()
 
 
+# WM_HOTKEY fires on key-down of the trigger combo's last key, which lands
+# well before the user's fingers physically release ctrl+shift - any
+# synthetic ctrl+<key> a macro sends right away can still land while those
+# modifiers are physically held, making the OS see ctrl+shift+<key> and fire
+# a matching registered hotkey (RegisterHotKey can't tell synthetic
+# (SendInput) keys from real ones). This delay runs before every macro body
+# to let the physical keys actually come up first.
+TRIGGER_RELEASE_GRACE = 0.2
+
+
 def run_in_background(macro):
     """Wrap a macro so the WM_HOTKEY dispatch loop returns immediately
     instead of running the macro inline (our macros wait on windows/elements
@@ -117,6 +153,7 @@ def run_in_background(macro):
 
     def run_once():
         try:
+            time.sleep(TRIGGER_RELEASE_GRACE)
             _run_with_com(macro)
         finally:
             lock.release()
