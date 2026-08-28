@@ -28,6 +28,7 @@ import pythoncom
 from macros.chrome_alp_ops import open_alp_ops
 from macros.chrome_playground import open_playground
 from macros.teams_gif import open_gif_picker
+from macros.teams_message import open_search
 from macros.teams_scroll import refresh_chats
 from macros.vscode_chat import paste_to_vscode_chat, paste_to_vscode_chat_and_create
 
@@ -51,6 +52,7 @@ HOTKEYS = {
     "ctrl+shift+b": paste_to_vscode_chat_and_create,
     "ctrl+shift+m": refresh_chats,
     "ctrl+shift+g": open_gif_picker,
+    "ctrl+shift+t": open_search,
     "ctrl+shift+o": open_alp_ops,
     "ctrl+shift+p": open_playground,
 }
