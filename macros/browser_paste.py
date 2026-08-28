@@ -1,30 +1,26 @@
-"""Focus the browser, paste a URL into the address bar, navigate, then paste
-text into the first text field on the resulting page.
+"""Focus the browser, open a fresh tab, and navigate to a URL by pasting it
+into the address bar - reusable building block for any macro that needs
+Chrome on a specific page (bookmarked pages, internal tools, ...) without
+clicking through bookmarks/menus to get there, and without disturbing
+whatever tab was already open/active.
 
-ADDRESS_BAR_CRITERIA and FIRST_TEXT_FIELD_CRITERIA are placeholders - run
-`python inspect_window.py "Google Chrome"` to find the address bar's real
-auto_id, and inspect the target page for its first text field.
-
-Note: Chrome exposes rendered page content over UIA too, but it's less
-stable than native app controls - dynamic pages can restructure their
-accessibility tree on every navigation. If FIRST_TEXT_FIELD_CRITERIA stops
-matching after a site update, fall back to an image template or fixed
-coords for that step (see automation.click_element).
+ADDRESS_BAR_CRITERIA's auto_id was found by enumerating Edit descendants of
+the focused Chrome window (Desktop(backend="uia").window(...).descendants(
+control_type="Edit")) - Chrome's UIA tree doesn't expose an "omnibox" auto_id
+despite that being the element's internal/DevTools name, so don't guess it
+from Chromium source naming. Re-run the same enumeration if this ever stops
+matching (e.g. after a Chrome update changes its UIA tree).
 """
 
 import automation
 
 BROWSER_TITLE_RE = ".*Google Chrome.*"
-ADDRESS_BAR_CRITERIA = {"control_type": "Edit", "auto_id": "omnibox"}
-FIRST_TEXT_FIELD_CRITERIA = {"control_type": "Edit"}
+ADDRESS_BAR_CRITERIA = {"control_type": "Edit", "auto_id": "view_1012"}
 
 
-def paste_url_and_text(url, text):
+def open_url(url):
     window = automation.focus_window(BROWSER_TITLE_RE)
+    automation.send_hotkey("ctrl", "t")
     automation.click_element(window, ADDRESS_BAR_CRITERIA)
     automation.paste_text(url)
     automation.press_key("enter")
-
-    window = automation.focus_window(BROWSER_TITLE_RE)  # re-fetch after navigation
-    automation.click_element(window, FIRST_TEXT_FIELD_CRITERIA)
-    automation.paste_text(text)

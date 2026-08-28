@@ -25,7 +25,8 @@ from ctypes import wintypes
 
 import pythoncom
 
-from macros.browser_paste import paste_url_and_text
+from macros.chrome_alp_ops import open_alp_ops
+from macros.chrome_playground import open_playground
 from macros.teams_gif import open_gif_picker
 from macros.teams_scroll import refresh_chats
 from macros.vscode_chat import paste_to_vscode_chat, paste_to_vscode_chat_and_create
@@ -50,8 +51,8 @@ HOTKEYS = {
     "ctrl+shift+b": paste_to_vscode_chat_and_create,
     "ctrl+shift+m": refresh_chats,
     "ctrl+shift+g": open_gif_picker,
-    # example only - real macros need actual url/text, not a hardcoded sample
-    "ctrl+shift+d": lambda: paste_url_and_text("https://example.com", "sample text"),
+    "ctrl+shift+o": open_alp_ops,
+    "ctrl+shift+p": open_playground,
 }
 
 # Avoid "x": macros/vscode_chat.py's cut_selected_text() sends a synthetic
