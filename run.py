@@ -30,7 +30,7 @@ from macros.chrome_playground import open_playground
 from macros.teams_gif import open_gif_picker
 from macros.teams_message import open_search
 from macros.teams_scroll import refresh_chats
-from macros.vscode_chat import paste_to_vscode_chat, paste_to_vscode_chat_and_create
+from macros.vscode_chat import agent_chat, agent_text
 
 HOTKEYS = {
     # ctrl+shift+<letter> instead of ctrl+alt+<number>: on many keyboard
@@ -48,8 +48,8 @@ HOTKEYS = {
     # QUIT_HOTKEY's comment for how this bit run.py before). "c" is unused by
     # any macro today but would carry the same risk the moment something
     # calls automation.copy().
-    "ctrl+shift+a": paste_to_vscode_chat,
-    "ctrl+shift+b": paste_to_vscode_chat_and_create,
+    "ctrl+shift+a": agent_chat,
+    "ctrl+shift+b": agent_text,
     "ctrl+shift+m": refresh_chats,
     "ctrl+shift+g": open_gif_picker,
     "ctrl+shift+t": open_search,
