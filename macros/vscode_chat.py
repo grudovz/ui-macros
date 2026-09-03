@@ -1,4 +1,6 @@
-"""Switch to VS Code and click the chat box, ready for a subsequent paste.
+"""Switch to VS Code and click into its Agent Sessions chat panel: agent_chat
+and agent_text target the chat's input box (ready for a subsequent paste),
+agent_scroll targets the response/conversation pane above it instead.
 
 The chat panel's monaco-editor input has no title/auto_id of its own and
 shares its class_name with every other editor instance in the window, so a
@@ -35,10 +37,20 @@ is a "most likely the one you just opened" guess, not a certainty. It can
 guess wrong if you actually wanted an older, further-left pane.
 """
 
+import pyautogui
+
 import automation
 
 VSCODE_TITLE_RE = ".*Agents.*"
 SESSIONS_PANEL_CRITERIA = {"auto_id": "workbench.parts.sessions"}
+
+# How far above the chat box's top edge to click for agent_scroll - lands in
+# the scrollable response/conversation area instead of the input box itself.
+# A fixed pixel offset rather than a UIA lookup, since the response pane has
+# no stable element of its own to target (same "no title/auto_id, shared
+# class_name" problem as the chat box, but nested inside content that
+# changes with every message).
+CHAT_SCROLL_OFFSET_Y = 300
 
 
 def _find_chat_box(window):
@@ -68,13 +80,19 @@ def _find_chat_box(window):
     return max(candidates, key=lambda element: element.rectangle().left)
 
 
-def agent_chat():
-    """Click the VS Code chat box - a separate paste macro supplies the text."""
-    window = automation.focus_window(VSCODE_TITLE_RE)
+def _resolve_chat_box(window):
+    """Like _find_chat_box, but raises instead of returning None - every
+    macro below needs a chat box to proceed."""
     chat_box = _find_chat_box(window)
     if chat_box is None:
         raise RuntimeError("Could not locate the VS Code chat box (no sessions panel or no chat pane open)")
-    chat_box.click_input()
+    return chat_box
+
+
+def agent_chat():
+    """Click the VS Code chat box - a separate paste macro supplies the text."""
+    window = automation.focus_window(VSCODE_TITLE_RE)
+    _resolve_chat_box(window).click_input()
 
 
 def agent_text():
@@ -85,9 +103,19 @@ def agent_text():
     submission that a generic paste macro wouldn't provide."""
     cut_text = automation.cut_selected_text()
     window = automation.focus_window(VSCODE_TITLE_RE)
-    chat_box = _find_chat_box(window)
-    if chat_box is None:
-        raise RuntimeError("Could not locate the VS Code chat box (no sessions panel or no chat pane open)")
-    chat_box.click_input()
+    _resolve_chat_box(window).click_input()
     automation.paste_text("/create " + cut_text)
     automation.press_key("enter")
+
+
+def agent_scroll():
+    """Click into the chat's response/conversation pane instead of its input
+    box, so subsequent Up/Down/PageUp/PageDown voice-dictation commands
+    scroll the conversation history instead of typing into the input. Same
+    pane-picking as agent_chat (see _find_chat_box), just clicked
+    CHAT_SCROLL_OFFSET_Y px above its top edge instead of inside it."""
+    window = automation.focus_window(VSCODE_TITLE_RE)
+    rect = _resolve_chat_box(window).rectangle()
+    x = (rect.left + rect.right) // 2
+    y = rect.top - CHAT_SCROLL_OFFSET_Y
+    pyautogui.click(x, y)

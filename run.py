@@ -25,12 +25,18 @@ from ctypes import wintypes
 
 import pythoncom
 
+from macros.agent_browser import agent_browser
+from macros.agent_chat_select import agent_chat_select
 from macros.chrome_alp_ops import open_alp_ops
 from macros.chrome_playground import open_playground
+from macros.file_explorer import open_drafts
+from macros.outlook_meeting import outlook_meeting
+from macros.show_desktop import show_desktop
 from macros.teams_gif import open_gif_picker
 from macros.teams_message import open_search
+from macros.teams_message_many import teams_message_many
 from macros.teams_scroll import refresh_chats
-from macros.vscode_chat import agent_chat, agent_text
+from macros.vscode_chat import agent_chat, agent_scroll, agent_text
 
 HOTKEYS = {
     # ctrl+shift+<letter> instead of ctrl+alt+<number>: on many keyboard
@@ -50,11 +56,18 @@ HOTKEYS = {
     # calls automation.copy().
     "ctrl+shift+a": agent_chat,
     "ctrl+shift+b": agent_text,
+    "ctrl+shift+r": agent_scroll,
+    "ctrl+shift+w": agent_chat_select,
+    "ctrl+shift+d": open_drafts,
+    "ctrl+shift+n": outlook_meeting,
+    "ctrl+shift+k": agent_browser,
     "ctrl+shift+m": refresh_chats,
     "ctrl+shift+g": open_gif_picker,
     "ctrl+shift+t": open_search,
+    "ctrl+shift+u": teams_message_many,
     "ctrl+shift+o": open_alp_ops,
     "ctrl+shift+p": open_playground,
+    "ctrl+shift+h": show_desktop,
 }
 
 # Avoid "x": macros/vscode_chat.py's cut_selected_text() sends a synthetic
