@@ -1,6 +1,9 @@
 """Switch to VS Code and click into its Agent Sessions chat panel: agent_chat
 and agent_text target the chat's input box (ready for a subsequent paste),
-agent_scroll targets the response/conversation pane above it instead.
+agent_scroll targets the response/conversation pane above it instead, and
+agent_scroll_other does the same for whichever pane ISN'T the active one,
+when 2+ chat panes are open side-by-side. agent_text_raw is like agent_text
+but pastes the cut selection unprefixed and unsubmitted.
 
 The chat panel's monaco-editor input has no title/auto_id of its own and
 shares its class_name with every other editor instance in the window, so a
@@ -53,22 +56,24 @@ SESSIONS_PANEL_CRITERIA = {"auto_id": "workbench.parts.sessions"}
 CHAT_SCROLL_OFFSET_Y = 300
 
 
-def _find_chat_box(window):
-    """Return the chat box's monaco-editor Text element, or None if none
-    exist. With one chat pane open there's exactly one candidate. With
-    multiple panes open side-by-side: prefer the one whose class_name
-    carries VS Code's "focused" token (the pane last typed into) if exactly
-    one does; otherwise fall back to the rightmost candidate (see module
-    docstring - a best guess, not a certainty)."""
+def _find_chat_box_candidates(window):
+    """Return every monaco-editor Text descendant under the sessions panel -
+    one per open chat pane - or [] if the panel isn't found or no pane is
+    open."""
     sessions = automation.find_element(window, **SESSIONS_PANEL_CRITERIA)
     if sessions is None:
-        return None
-    candidates = [
+        return []
+    return [
         element for element in sessions.descendants(control_type="Text")
         if "monaco-editor" in (element.element_info.class_name or "")
     ]
-    if not candidates:
-        return None
+
+
+def _pick_active(candidates):
+    """Pick the pane last typed into among candidates: prefer the one whose
+    class_name carries VS Code's "focused" token if exactly one does;
+    otherwise fall back to the rightmost candidate (see module docstring -
+    a best guess, not a certainty). Assumes candidates is non-empty."""
     if len(candidates) == 1:
         return candidates[0]
     focused = [
@@ -80,12 +85,45 @@ def _find_chat_box(window):
     return max(candidates, key=lambda element: element.rectangle().left)
 
 
+def _find_chat_box(window):
+    """Return the active chat pane's monaco-editor Text element, or None if
+    no pane is open. See _pick_active for how "active" is chosen among 2+
+    candidates."""
+    candidates = _find_chat_box_candidates(window)
+    if not candidates:
+        return None
+    return _pick_active(candidates)
+
+
+def _find_other_chat_box(window):
+    """Return a chat pane's monaco-editor Text element that ISN'T the active
+    one (see _find_chat_box) - for scrolling a pane you're not typing into.
+    None if there's no second pane open. With 3+ panes, picks the leftmost
+    of the non-active ones - arbitrary but deterministic, same spirit as the
+    rightmost-fallback rule for "active"."""
+    candidates = _find_chat_box_candidates(window)
+    if len(candidates) < 2:
+        return None
+    active = _pick_active(candidates)
+    others = [element for element in candidates if element is not active]
+    return min(others, key=lambda element: element.rectangle().left)
+
+
 def _resolve_chat_box(window):
     """Like _find_chat_box, but raises instead of returning None - every
     macro below needs a chat box to proceed."""
     chat_box = _find_chat_box(window)
     if chat_box is None:
         raise RuntimeError("Could not locate the VS Code chat box (no sessions panel or no chat pane open)")
+    return chat_box
+
+
+def _resolve_other_chat_box(window):
+    """Like _resolve_chat_box, but for the non-active pane - raises if
+    there's no second chat pane open to target."""
+    chat_box = _find_other_chat_box(window)
+    if chat_box is None:
+        raise RuntimeError("Could not locate a second VS Code chat pane to scroll (only one pane open?)")
     return chat_box
 
 
@@ -108,6 +146,16 @@ def agent_text():
     automation.press_key("enter")
 
 
+def agent_text_raw():
+    """Like agent_text, but pastes the cut selection as-is: no '/create '
+    prefix and no Enter submission, so you can review or edit the chat box
+    before sending it yourself."""
+    cut_text = automation.cut_selected_text()
+    window = automation.focus_window(VSCODE_TITLE_RE)
+    _resolve_chat_box(window).click_input()
+    automation.paste_text(cut_text)
+
+
 def agent_scroll():
     """Click into the chat's response/conversation pane instead of its input
     box, so subsequent Up/Down/PageUp/PageDown voice-dictation commands
@@ -116,6 +164,18 @@ def agent_scroll():
     CHAT_SCROLL_OFFSET_Y px above its top edge instead of inside it."""
     window = automation.focus_window(VSCODE_TITLE_RE)
     rect = _resolve_chat_box(window).rectangle()
+    x = (rect.left + rect.right) // 2
+    y = rect.top - CHAT_SCROLL_OFFSET_Y
+    pyautogui.click(x, y)
+
+
+def agent_scroll_other():
+    """Like agent_scroll, but for whichever chat pane ISN'T the active one
+    (see _find_other_chat_box) - lets voice-dictation scroll commands reach
+    a pane you're not currently typing into, when 2+ chat panes are open
+    side-by-side."""
+    window = automation.focus_window(VSCODE_TITLE_RE)
+    rect = _resolve_other_chat_box(window).rectangle()
     x = (rect.left + rect.right) // 2
     y = rect.top - CHAT_SCROLL_OFFSET_Y
     pyautogui.click(x, y)
