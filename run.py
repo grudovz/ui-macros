@@ -38,6 +38,14 @@ from macros.teams_message import open_search
 from macros.teams_message_many import teams_message_many
 from macros.teams_scroll import refresh_chats
 from macros.vscode_chat import agent_chat, agent_scroll, agent_scroll_other, agent_text, agent_text_raw
+from macros.window_focus import (
+    toggle_bistro_portal,
+    toggle_chrome,
+    toggle_file_explorer,
+    toggle_outlook,
+    toggle_vscode_agent,
+    toggle_wordpad_todo,
+)
 
 HOTKEYS = {
     # ctrl+shift+<letter> instead of ctrl+alt+<number>: on many keyboard
@@ -73,6 +81,18 @@ HOTKEYS = {
     "ctrl+shift+h": show_desktop,
     "ctrl+shift+j": previous_tab,
     "ctrl+shift+y": next_tab,
+    # Not "1"/"2"/"3": Windows itself reserves ctrl+shift+<digit> for jumping
+    # directly to the Nth installed keyboard layout (confirmed via a live
+    # RegisterHotKey probe - this machine has 3 layouts installed, en-US x2 +
+    # bg, so 1/2/3 specifically are taken at the OS level, outside of AHK
+    # entirely). Check with a similar probe before assuming any other digit
+    # combo is free, rather than trusting default.ahk alone.
+    "ctrl+shift+4": toggle_chrome,
+    "ctrl+shift+5": toggle_vscode_agent,
+    "ctrl+shift+6": toggle_wordpad_todo,
+    "ctrl+shift+7": toggle_bistro_portal,
+    "ctrl+shift+8": toggle_outlook,
+    "ctrl+shift+9": toggle_file_explorer,
 }
 
 # Avoid "x": macros/vscode_chat.py's cut_selected_text() sends a synthetic

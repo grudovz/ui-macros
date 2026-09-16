@@ -8,6 +8,7 @@ resolution/DPI independent whenever possible:
   3. Fixed screen coordinates - last resort, breaks if the layout changes
 """
 
+import ctypes
 import time
 
 import pyautogui
@@ -16,6 +17,52 @@ from pywinauto import Desktop
 from pywinauto.findwindows import ElementNotFoundError
 
 pyautogui.FAILSAFE = True
+
+
+def toggle_window(timeout=5, **criteria):
+    """Find a top-level window matching `criteria` (e.g. title_re=... , or
+    class_name=... for windows whose title varies too much to match by text,
+    like File Explorer) and toggle it exactly like Windows' own
+    Win+<taskbar-slot-number> shortcut does: bring it to the foreground, or
+    minimize it if it's already the active window - just driven by a window
+    match instead of taskbar position, so it isn't limited to the taskbar's
+    9 pinned slots or broken by their ordering.
+
+    Unlike focus_window, this does NOT unconditionally raise the window -
+    existing macros (agent_chat, agent_scroll, open_url, ...) rely on
+    focus_window always bringing their target forward, so this is a
+    separate function rather than a change to that one.
+
+    "Already active" is checked via the raw Win32 foreground-window handle
+    (GetForegroundWindow), not pywinauto's own is_active()/UIA-focus-based
+    check - this project has been burned before by UIA's own focus signals
+    going stale/unreliable in ways a direct HWND comparison isn't (see
+    macros/vscode_chat.py's module docstring).
+
+    Un-minimizing uses raw ShowWindow(SW_RESTORE), not pywinauto's own
+    window.restore(): that calls UIA's SetWindowVisualState(Normal), which
+    unconditionally un-maximizes too - so a window that was maximized before
+    being minimized (e.g. via Win+D) would come back at its small "restored"
+    size instead of maximized. SW_RESTORE is what a taskbar-icon click uses
+    and honors whatever state Windows itself remembers."""
+    SW_RESTORE = 9
+    deadline = time.time() + timeout
+    last_error = None
+    while time.time() < deadline:
+        try:
+            window = Desktop(backend="uia").window(visible_only=False, **criteria)
+            is_foreground = ctypes.windll.user32.GetForegroundWindow() == window.handle
+            if is_foreground and not window.is_minimized():
+                window.minimize()
+            else:
+                if window.is_minimized():
+                    ctypes.windll.user32.ShowWindow(window.handle, SW_RESTORE)
+                window.set_focus()
+            return window
+        except ElementNotFoundError as exc:
+            last_error = exc
+            time.sleep(0.2)
+    raise RuntimeError(f"No window matching {criteria!r} found") from last_error
 
 
 def focus_window(title_re, timeout=5):
