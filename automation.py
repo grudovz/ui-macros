@@ -14,9 +14,31 @@ import time
 import pyautogui
 import pyperclip
 from pywinauto import Desktop
-from pywinauto.findwindows import ElementNotFoundError
+from pywinauto.findwindows import ElementAmbiguousError, ElementNotFoundError
 
 pyautogui.FAILSAFE = True
+
+
+def minimize_active_window():
+    """Minimize whatever window currently has focus, without resizing it -
+    a generic "turn it off" counterpart to toggle_window's per-app matching,
+    for macros that want to combine bringing a window up (e.g. agent_chat's
+    click) with putting it away again afterwards, without needing to know
+    which app it was.
+
+    Operates on the raw foreground HWND (GetForegroundWindow) directly, not
+    a UIA-resolved window by title/class - so unlike toggle_window, there's
+    no criteria to match and nothing that can raise ElementNotFoundError or
+    ElementAmbiguousError (the bug new Outlook's window model hit there).
+
+    Minimizing (unlike restoring - see toggle_window's SW_RESTORE note)
+    never actually loses a window's maximized state: Windows remembers a
+    window's placement for the next restore regardless of how it was
+    minimized, so a raw ShowWindow(SW_MINIMIZE) here is just as safe as
+    toggle_window's own window.minimize() call."""
+    SW_MINIMIZE = 6
+    hwnd = ctypes.windll.user32.GetForegroundWindow()
+    ctypes.windll.user32.ShowWindow(hwnd, SW_MINIMIZE)
 
 
 def toggle_window(timeout=5, **criteria):
@@ -37,14 +59,22 @@ def toggle_window(timeout=5, **criteria):
     (GetForegroundWindow), not pywinauto's own is_active()/UIA-focus-based
     check - this project has been burned before by UIA's own focus signals
     going stale/unreliable in ways a direct HWND comparison isn't (see
-    macros/vscode_chat.py's module docstring).
+    macros/agent_chat.py's module docstring).
 
     Un-minimizing uses raw ShowWindow(SW_RESTORE), not pywinauto's own
     window.restore(): that calls UIA's SetWindowVisualState(Normal), which
     unconditionally un-maximizes too - so a window that was maximized before
     being minimized (e.g. via Win+D) would come back at its small "restored"
     size instead of maximized. SW_RESTORE is what a taskbar-icon click uses
-    and honors whatever state Windows itself remembers."""
+    and honors whatever state Windows itself remembers.
+
+    Also retries on ElementAmbiguousError, not just ElementNotFoundError: new
+    Outlook ("Outlook Host") briefly holds two top-level windows matching the
+    same title_re while it tears down and recreates its own window during a
+    restore (confirmed live - its HWND actually changes across a toggle), so
+    a match can be transiently ambiguous for a moment before settling back to
+    one. Treating that the same as "not found yet" and retrying is enough -
+    confirmed live this clears within the timeout."""
     SW_RESTORE = 9
     deadline = time.time() + timeout
     last_error = None
@@ -59,10 +89,10 @@ def toggle_window(timeout=5, **criteria):
                     ctypes.windll.user32.ShowWindow(window.handle, SW_RESTORE)
                 window.set_focus()
             return window
-        except ElementNotFoundError as exc:
+        except (ElementNotFoundError, ElementAmbiguousError) as exc:
             last_error = exc
             time.sleep(0.2)
-    raise RuntimeError(f"No window matching {criteria!r} found") from last_error
+    raise RuntimeError(f"No unambiguous window matching {criteria!r} found") from last_error
 
 
 def focus_window(title_re, timeout=5):
@@ -73,7 +103,11 @@ def focus_window(title_re, timeout=5):
     the UIA "visible" property, which some Electron apps (e.g. Microsoft Teams)
     report as False whenever the window isn't the current foreground/focused
     window - even though it's genuinely open and switchable. Without this, a
-    background Teams window intermittently fails to resolve at all."""
+    background Teams window intermittently fails to resolve at all.
+
+    Also retries on ElementAmbiguousError alongside ElementNotFoundError - see
+    toggle_window's docstring for why (new Outlook's window briefly matches
+    twice during its own restore/recreate transition)."""
     deadline = time.time() + timeout
     last_error = None
     while time.time() < deadline:
@@ -81,10 +115,10 @@ def focus_window(title_re, timeout=5):
             window = Desktop(backend="uia").window(title_re=title_re, visible_only=False)
             window.set_focus()
             return window
-        except ElementNotFoundError as exc:
+        except (ElementNotFoundError, ElementAmbiguousError) as exc:
             last_error = exc
             time.sleep(0.2)
-    raise RuntimeError(f"No window matching {title_re!r} found") from last_error
+    raise RuntimeError(f"No unambiguous window matching {title_re!r} found") from last_error
 
 
 def resize_window(window, width, height):

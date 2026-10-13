@@ -26,7 +26,7 @@ requirements.txt     — pinned dependencies
 ```
 
 ## Conventions
-- Element criteria dicts (e.g. `CHAT_BOX_CRITERIA` in `macros/vscode_chat.py`) are placeholders until verified against the real app via `inspect_window.py` — don't assume they're correct without checking.
+- Element criteria dicts (e.g. `CHAT_BOX_CRITERIA` in `macros/agent_chat.py`) are placeholders until verified against the real app via `inspect_window.py` — don't assume they're correct without checking.
 - Prefer UIA element lookup over image matching, and image matching over fixed coordinates — only reach for a lower tier when the one above it isn't reliable for that specific control.
 - `automation.py` is the shared library — new cross-cutting helpers go there, not duplicated inside a macro file.
 - Windows-only (`pywinauto`'s UIA backend requires Windows). Not intended to be cross-platform.

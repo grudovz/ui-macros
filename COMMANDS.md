@@ -36,3 +36,32 @@ python element_finder.py
 These same three (activate/run/inspect) are also available as VS Code tasks —
 see the "Running via VS Code tasks" note in the project docs, or just
 `Ctrl+Shift+P` -> "Tasks: Run Task".
+
+## Autostart at logon
+
+`start_at_logon.vbs` opens VS Code on this folder and starts `run.py` via
+`pythonw.exe` — hidden, no console/taskbar window at all. Its output (hotkey
+list, or any hotkey-registration error) goes to `run.log` instead, since
+there's no window to read it from. A per-user Startup-folder shortcut runs it
+at every logon — no admin rights needed, nothing machine-wide.
+
+Install/reinstall the shortcut:
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File setup_autostart.ps1
+```
+
+Remove it:
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File setup_autostart.ps1 -Remove
+```
+
+If VS Code doesn't come up already showing the Agents panel, `ctrl+shift+5`
+(`toggle_vscode_agent`) brings it forward once VS Code finishes loading.
+
+To check it's actually running (there's no window to glance at): check
+`run.log` for the hotkey list, or look for `pythonw.exe` in Task Manager.
+`ctrl+shift+z` quits it same as always — hotkeys are global regardless of
+window visibility.
+
+If hidden mode ever misbehaves, run `start_at_logon.bat` directly instead —
+same two steps, but with `run.py` in a normal, visible, stay-open window.

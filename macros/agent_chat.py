@@ -1,9 +1,9 @@
 """Switch to VS Code and click into its Agent Sessions chat panel: agent_chat
-and agent_text target the chat's input box (ready for a subsequent paste),
+targets the chat's input box (ready for a subsequent paste), agent_text_raw
+cuts the current selection and pastes it into that box (unsubmitted),
 agent_scroll targets the response/conversation pane above it instead, and
 agent_scroll_other does the same for whichever pane ISN'T the active one,
-when 2+ chat panes are open side-by-side. agent_text_raw is like agent_text
-but pastes the cut selection unprefixed and unsubmitted.
+when 2+ chat panes are open side-by-side.
 
 The chat panel's monaco-editor input has no title/auto_id of its own and
 shares its class_name with every other editor instance in the window, so a
@@ -56,15 +56,47 @@ SESSIONS_PANEL_CRITERIA = {"auto_id": "workbench.parts.sessions"}
 CHAT_SCROLL_OFFSET_Y = 300
 
 
+# Cache of the last-resolved sessions panel element, keyed by the VS Code
+# window's handle - automation.find_element's wait() takes ~2s to resolve
+# this panel from the top-level window every time (confirmed live: VS
+# Code/Electron's UIA provider is slow at a broad search rooted at the
+# whole window), which dwarfs the cost of everything else this module does
+# (~0.6s to scan the panel's own descendants once you're already scoped to
+# it). The cache is invalidated purely by staleness (a dead reference
+# raises when queried - e.g. after the Agent Sessions view is closed and
+# reopened, or VS Code restarts) or the window handle changing, never by
+# which or how many panes are open: confirmed live that a single cached
+# panel reference keeps returning correct, live results across both focus
+# changes between panes and the pane count itself changing (tested live:
+# 2 -> 3 -> 4 -> 5 panes, same reference throughout, no re-fetch needed).
+_sessions_panel_cache = {}
+
+
+def _sessions_panel_descendants(window):
+    """Return every Text-type descendant of the sessions panel for `window`,
+    reusing a cached panel reference when possible (see
+    _sessions_panel_cache) instead of paying automation.find_element's ~2s
+    cost on every call."""
+    sessions = _sessions_panel_cache.get(window.handle)
+    if sessions is not None:
+        try:
+            return sessions.descendants(control_type="Text")
+        except Exception:
+            pass
+
+    sessions = automation.find_element(window, **SESSIONS_PANEL_CRITERIA)
+    if sessions is None:
+        return []
+    _sessions_panel_cache[window.handle] = sessions
+    return sessions.descendants(control_type="Text")
+
+
 def _find_chat_box_candidates(window):
     """Return every monaco-editor Text descendant under the sessions panel -
     one per open chat pane - or [] if the panel isn't found or no pane is
     open."""
-    sessions = automation.find_element(window, **SESSIONS_PANEL_CRITERIA)
-    if sessions is None:
-        return []
     return [
-        element for element in sessions.descendants(control_type="Text")
+        element for element in _sessions_panel_descendants(window)
         if "monaco-editor" in (element.element_info.class_name or "")
     ]
 
@@ -133,23 +165,10 @@ def agent_chat():
     _resolve_chat_box(window).click_input()
 
 
-def agent_text():
-    """Cut the current selection (e.g. in Notepad/WordPad), switch to VS Code,
-    paste it into the chat box prefixed with '/create ', and submit it to
-    invoke the JIRA tool's /create skill. Unlike agent_chat, this one still
-    does the cut+paste itself - it needs the '/create ' prefix and Enter
-    submission that a generic paste macro wouldn't provide."""
-    cut_text = automation.cut_selected_text()
-    window = automation.focus_window(VSCODE_TITLE_RE)
-    _resolve_chat_box(window).click_input()
-    automation.paste_text("/create " + cut_text)
-    automation.press_key("enter")
-
-
 def agent_text_raw():
-    """Like agent_text, but pastes the cut selection as-is: no '/create '
-    prefix and no Enter submission, so you can review or edit the chat box
-    before sending it yourself."""
+    """Cut the current selection (e.g. in Notepad/WordPad), switch to VS Code,
+    and paste it into the chat box as-is, without submitting it, so you can
+    review or edit it before sending it yourself."""
     cut_text = automation.cut_selected_text()
     window = automation.focus_window(VSCODE_TITLE_RE)
     _resolve_chat_box(window).click_input()

@@ -25,20 +25,21 @@ from ctypes import wintypes
 
 import pythoncom
 
-from macros.agent_browser import agent_browser
 from macros.agent_chat_select import agent_chat_select
+from macros.chrome_agent_browser import open_agent_browser, open_cowork_browser
 from macros.chrome_alp_ops import open_alp_ops
 from macros.chrome_playground import open_playground
 from macros.chrome_tabs import next_tab, previous_tab
 from macros.file_explorer import open_drafts
-from macros.outlook_meeting import outlook_meeting
+from macros.outlook_calendar import outlook_next_week, outlook_previous_week
 from macros.show_desktop import show_desktop
 from macros.teams_gif import open_gif_picker
 from macros.teams_message import open_search
 from macros.teams_message_many import teams_message_many
 from macros.teams_scroll import refresh_chats
-from macros.vscode_chat import agent_chat, agent_scroll, agent_scroll_other, agent_text, agent_text_raw
+from macros.agent_chat import agent_chat, agent_scroll, agent_scroll_other, agent_text_raw
 from macros.window_focus import (
+    minimize_active,
     toggle_bistro_portal,
     toggle_chrome,
     toggle_file_explorer,
@@ -64,14 +65,13 @@ HOTKEYS = {
     # any macro today but would carry the same risk the moment something
     # calls automation.copy().
     "ctrl+shift+a": agent_chat,
-    "ctrl+shift+b": agent_text,
     "ctrl+shift+f": agent_text_raw,
     "ctrl+shift+r": agent_scroll,
     "ctrl+shift+i": agent_scroll_other,
     "ctrl+shift+w": agent_chat_select,
     "ctrl+shift+d": open_drafts,
-    "ctrl+shift+n": outlook_meeting,
-    "ctrl+shift+k": agent_browser,
+    "ctrl+shift+k": open_agent_browser,
+    "ctrl+shift+n": open_cowork_browser,
     "ctrl+shift+m": refresh_chats,
     "ctrl+shift+g": open_gif_picker,
     "ctrl+shift+t": open_search,
@@ -81,6 +81,22 @@ HOTKEYS = {
     "ctrl+shift+h": show_desktop,
     "ctrl+shift+j": previous_tab,
     "ctrl+shift+y": next_tab,
+    "ctrl+shift+e": minimize_active,
+    # alt+shift+<letter>, not ctrl+shift: when these were added, every
+    # ctrl+shift letter was spoken for (only q/s were free, kept in reserve
+    # for something more frequent than these two). alt+shift is still just 2 modifiers, so Dragon's
+    # regular (non-Advanced-Scripting) command editor can trigger it
+    # directly - unlike a Win-involving combo, which Dragon's regular editor
+    # can't produce at all (only Ctrl/Alt/Shift are offered there), forcing
+    # a much slower Advanced Scripting macro (keybd_event via a Declare
+    # Function call) previously. Confirmed safe: alt+shift doesn't share
+    # ctrl+alt's AltGr false-trigger hazard (AltGr physically generates
+    # ctrl+alt, never alt+shift) - and per the user's default.ahk, alt+shift
+    # is almost entirely free (only "d", "3", and the arrow keys are bound),
+    # confirmed further via a live RegisterHotKey probe finding zero OS/other
+    # -app reservations on any letter.
+    "alt+shift+s": outlook_previous_week,
+    "alt+shift+q": outlook_next_week,
     # Not "1"/"2"/"3": Windows itself reserves ctrl+shift+<digit> for jumping
     # directly to the Nth installed keyboard layout (confirmed via a live
     # RegisterHotKey probe - this machine has 3 layouts installed, en-US x2 +
@@ -95,7 +111,7 @@ HOTKEYS = {
     "ctrl+shift+9": toggle_file_explorer,
 }
 
-# Avoid "x": macros/vscode_chat.py's cut_selected_text() sends a synthetic
+# Avoid "x": macros/agent_chat.py's cut_selected_text() sends a synthetic
 # ctrl+x as its first action, and RegisterHotKey can't tell synthetic
 # (SendInput) key events from real ones. If the user is still physically
 # holding ctrl+shift from the ctrl+shift+<letter> hotkey that triggered the
