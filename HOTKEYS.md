@@ -19,6 +19,7 @@ Code can't tell.
 | `ctrl+shift+r` | `agent_scroll` | Click into the conversation area above the input box, so Up/Down/Page keys scroll the chat history |
 | `ctrl+shift+i` | `agent_scroll_other` | Like `agent_scroll`, but for the other chat pane - the one you're not typing in |
 | `ctrl+shift+w` | `agent_chat_select` | Open the chat picker at the top of the Agent Sessions panel, to switch chats |
+| `alt+shift+e` | `agent_files` | Show the Files tab in the editor area: switch to it if it's open, otherwise open it (clicks "+" next to the tabs, then "Files") |
 
 ## Teams
 
@@ -43,8 +44,9 @@ the Calendar - they find the window by "Calendar" in its title.
 
 | Hotkey | Macro | What it does |
 |---|---|---|
-| `ctrl+shift+k` | `open_agent_browser` | Switch to the Copilot chat tab (Ctrl+5 - keep it pinned 5th), click "New chat", then click into the message box, ready for dictation |
-| `ctrl+shift+n` | `open_cowork_browser` | Switch to the Cowork tab (Ctrl+4 - keep it pinned 4th), click "New task", then click into the message box, ready for dictation (e.g. to have it send an email or check calendar availability) |
+| `ctrl+shift+k` | `open_agent_browser` | Switch to the Copilot tab (Ctrl+4 - keep it pinned 4th), nothing else |
+| `ctrl+shift+n` | `select_agent_chatbox_browser` | Click into the message box on the current Copilot tab - chat or Cowork view, new or existing conversation - ready for dictation |
+| `alt+shift+r` | `agent_scroll_browser` | Click into the conversation area above the Copilot message box, so Up/Down/Page keys scroll the chat history |
 | `ctrl+shift+o` | `open_alp_ops` | Open the ALP ops page in a new tab and log in (needs `ALP_USERNAME`/`ALP_PASSWORD` env vars) |
 | `ctrl+shift+p` | `open_playground` | Open the central-access-gateway playground in a new tab and log in (needs `PLAYGROUND_USERNAME`/`PLAYGROUND_PASSWORD` env vars) |
 | `ctrl+shift+j` | `previous_tab` | Switch to the previous tab |
@@ -79,10 +81,10 @@ it's already the active window - same as clicking its taskbar icon.
 |---|---|
 | `macros/browser_paste.py` | `open_url(url)` - shared building block, not a macro: focus Chrome, open a new tab, paste the URL, press Enter. Used by `open_alp_ops`, `open_playground` |
 
-## Free 2-modifier slots (as of 2026-10-13)
+## Free 2-modifier slots (as of 2026-10-28)
 
 - `ctrl+shift`: `b`, `q`, `s`, digit `0`
-- `alt+shift`: everything except `d`, `3` (AHK-owned) and `q`, `s` (used above)
+- `alt+shift`: everything except `d`, `3` (AHK-owned) and `e`, `q`, `r`, `s` (used above)
 
 Also check the user's separate AutoHotkey script (`default.ahk`) before
 assigning a new combo - it claims some letter/digit combos of its own,

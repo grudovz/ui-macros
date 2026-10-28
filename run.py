@@ -26,7 +26,8 @@ from ctypes import wintypes
 import pythoncom
 
 from macros.agent_chat_select import agent_chat_select
-from macros.chrome_agent_browser import open_agent_browser, open_cowork_browser
+from macros.agent_files import agent_files
+from macros.chrome_agent_browser import agent_scroll_browser, open_agent_browser, select_agent_chatbox_browser
 from macros.chrome_alp_ops import open_alp_ops
 from macros.chrome_playground import open_playground
 from macros.chrome_tabs import next_tab, previous_tab
@@ -71,7 +72,7 @@ HOTKEYS = {
     "ctrl+shift+w": agent_chat_select,
     "ctrl+shift+d": open_drafts,
     "ctrl+shift+k": open_agent_browser,
-    "ctrl+shift+n": open_cowork_browser,
+    "ctrl+shift+n": select_agent_chatbox_browser,
     "ctrl+shift+m": refresh_chats,
     "ctrl+shift+g": open_gif_picker,
     "ctrl+shift+t": open_search,
@@ -97,6 +98,11 @@ HOTKEYS = {
     # -app reservations on any letter.
     "alt+shift+s": outlook_previous_week,
     "alt+shift+q": outlook_next_week,
+    # "e" mirrors the Agents window's own Files shortcut, ctrl+shift+e -
+    # which minimize_active already owns (see macros/agent_files.py).
+    "alt+shift+e": agent_files,
+    # "r" mirrors agent_scroll's ctrl+shift+r - the VS Code counterpart.
+    "alt+shift+r": agent_scroll_browser,
     # Not "1"/"2"/"3": Windows itself reserves ctrl+shift+<digit> for jumping
     # directly to the Nth installed keyboard layout (confirmed via a live
     # RegisterHotKey probe - this machine has 3 layouts installed, en-US x2 +
