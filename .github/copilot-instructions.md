@@ -31,6 +31,12 @@ requirements.txt     — pinned dependencies
 - `automation.py` is the shared library — new cross-cutting helpers go there, not duplicated inside a macro file.
 - Windows-only (`pywinauto`'s UIA backend requires Windows). Not intended to be cross-platform.
 
+## Endpoint security: no hidden launchers
+This runs on a corporate laptop with endpoint protection (EDR). In November 2026 it flagged and blocked this repo's old logon autostart (`wscript.exe` running a VBS that started a hidden `pythonw.exe`), so the autostart was removed.
+- Without IT/security approval, never create or suggest hidden or automatic launchers. That means no VBS/`wscript`, no Startup-folder shortcuts, scheduled tasks or registry Run keys, no hidden `pythonw` processes, no WMI `Win32_Process Create`, and no background services or local servers that start by themselves.
+- Long-running tools such as `run.py` are started by hand in a visible terminal (`.venv\Scripts\python.exe run.py`), and only the user restarts them.
+- If something looks like it needs to run unattended, tell the user it has to be cleared with IT first; don't build it.
+
 ## Testing
 No real-window automation in automated tests (can't reliably simulate Windows UIA/window focus in CI). If pure-logic helpers are added (e.g. text transforms with no UI interaction), test those with `pytest` the same way `test 1/story_parser.py` is tested.
 
