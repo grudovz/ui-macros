@@ -44,11 +44,11 @@ the Calendar - they find the window by "Calendar" in its title.
 
 | Hotkey | Macro | What it does |
 |---|---|---|
-| `ctrl+shift+k` | `open_agent_browser` | Switch to the Copilot tab (Ctrl+4 - keep it pinned 4th), nothing else |
+| `ctrl+shift+k` | `open_agent_browser` | Switch to the main Copilot tab (Ctrl+4 - keep it pinned 4th), nothing else |
 | `ctrl+shift+n` | `select_agent_chatbox_browser` | Click into the message box on the current Copilot tab - chat or Cowork view, new or existing conversation - ready for dictation |
 | `alt+shift+r` | `agent_scroll_browser` | Click into the conversation area above the Copilot message box, so Up/Down/Page keys scroll the chat history |
+| `ctrl+shift+p` | `open_teams_agent_browser` | Switch to the Copilot tab set up to send Teams messages (Ctrl+3 - keep it pinned 3rd), then click into its message box, ready for dictation |
 | `ctrl+shift+o` | `open_alp_ops` | Open the ALP ops page in a new tab and log in (needs `ALP_USERNAME`/`ALP_PASSWORD` env vars) |
-| `ctrl+shift+p` | `open_playground` | Open the central-access-gateway playground in a new tab and log in (needs `PLAYGROUND_USERNAME`/`PLAYGROUND_PASSWORD` env vars) |
 | `ctrl+shift+j` | `previous_tab` | Switch to the previous tab |
 | `ctrl+shift+y` | `next_tab` | Switch to the next tab |
 
@@ -62,6 +62,7 @@ it's already the active window - same as clicking its taskbar icon.
 | `ctrl+shift+d` | `open_drafts` | Open the jira-tool drafts folder in File Explorer (reuses the window if it's already open) |
 | `ctrl+shift+h` | `show_desktop` | Hide everything except Outlook (Win+D, then bring Outlook back) |
 | `ctrl+shift+e` | `minimize_active` | Minimize whichever window is currently active |
+| `alt+shift+h` | `snip_around_mouse` | Open the snipping overlay (Win+Shift+S) and select a 1200 x 1200 px box centered on the mouse, cut off at the screen edges and the taskbar - then carry on as after a manual selection (markup, Capture) |
 | `ctrl+shift+4` | `toggle_chrome` | Toggle Chrome |
 | `ctrl+shift+5` | `toggle_vscode_agent` | Toggle the VS Code Agents window |
 | `ctrl+shift+6` | `toggle_wordpad_todo` | Toggle the WordPad to-do list (`to-do list.rtf.docx`) |
@@ -80,11 +81,12 @@ it's already the active window - same as clicking its taskbar icon.
 | File | What it is |
 |---|---|
 | `macros/browser_paste.py` | `open_url(url)` - shared building block, not a macro: focus Chrome, open a new tab, paste the URL, press Enter. Used by `open_alp_ops`, `open_playground` |
+| `macros/chrome_playground.py` | `open_playground` - open the central-access-gateway playground in a new tab and log in (needs `PLAYGROUND_USERNAME`/`PLAYGROUND_PASSWORD` env vars). Unbound since 2026-11-11, when its `ctrl+shift+p` went to `open_teams_agent_browser`; kept in case it's wanted again |
 
-## Free 2-modifier slots (as of 2026-10-28)
+## Free 2-modifier slots (as of 2026-11-11)
 
 - `ctrl+shift`: `b`, `q`, `s`, digit `0`
-- `alt+shift`: everything except `d`, `3` (AHK-owned) and `e`, `q`, `r`, `s` (used above)
+- `alt+shift`: everything except `d`, `3`, `w` (AHK-owned) and `e`, `h`, `q`, `r`, `s` (used above)
 
 Also check the user's separate AutoHotkey script (`default.ahk`) before
 assigning a new combo - it claims some letter/digit combos of its own,

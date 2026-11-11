@@ -27,13 +27,18 @@ import pythoncom
 
 from macros.agent_chat_select import agent_chat_select
 from macros.agent_files import agent_files
-from macros.chrome_agent_browser import agent_scroll_browser, open_agent_browser, select_agent_chatbox_browser
+from macros.chrome_agent_browser import (
+    agent_scroll_browser,
+    open_agent_browser,
+    open_teams_agent_browser,
+    select_agent_chatbox_browser,
+)
 from macros.chrome_alp_ops import open_alp_ops
-from macros.chrome_playground import open_playground
 from macros.chrome_tabs import next_tab, previous_tab
 from macros.file_explorer import open_drafts
 from macros.outlook_calendar import outlook_next_week, outlook_previous_week
 from macros.show_desktop import show_desktop
+from macros.snipping import snip_around_mouse
 from macros.teams_gif import open_gif_picker
 from macros.teams_message import open_search
 from macros.teams_message_many import teams_message_many
@@ -78,7 +83,7 @@ HOTKEYS = {
     "ctrl+shift+t": open_search,
     "ctrl+shift+u": teams_message_many,
     "ctrl+shift+o": open_alp_ops,
-    "ctrl+shift+p": open_playground,
+    "ctrl+shift+p": open_teams_agent_browser,
     "ctrl+shift+h": show_desktop,
     "ctrl+shift+j": previous_tab,
     "ctrl+shift+y": next_tab,
@@ -103,6 +108,8 @@ HOTKEYS = {
     "alt+shift+e": agent_files,
     # "r" mirrors agent_scroll's ctrl+shift+r - the VS Code counterpart.
     "alt+shift+r": agent_scroll_browser,
+    # "h" for here - the area around the mouse.
+    "alt+shift+h": snip_around_mouse,
     # Not "1"/"2"/"3": Windows itself reserves ctrl+shift+<digit> for jumping
     # directly to the Nth installed keyboard layout (confirmed via a live
     # RegisterHotKey probe - this machine has 3 layouts installed, en-US x2 +

@@ -10,6 +10,7 @@ resolution/DPI independent whenever possible:
 
 import ctypes
 import time
+from ctypes import wintypes
 
 import pyautogui
 import pyperclip
@@ -233,3 +234,103 @@ def press_key(key, times=1, interval=0.05):
     for _ in range(times):
         pyautogui.press(key)
         time.sleep(interval)
+
+
+# SendInput structures and flags, for send_hotkey_raw and drag below.
+_INPUT_MOUSE = 0
+_INPUT_KEYBOARD = 1
+_KEYEVENTF_EXTENDEDKEY = 0x0001
+_KEYEVENTF_KEYUP = 0x0002
+_MOUSEEVENTF_LEFTDOWN = 0x0002
+_MOUSEEVENTF_LEFTUP = 0x0004
+# MOVE | ABSOLUTE | VIRTUALDESK: move to absolute coordinates that span the
+# whole virtual desktop (all monitors), not just the primary screen.
+_MOUSEEVENTF_MOVE_ABSOLUTE = 0x0001 | 0x8000 | 0x4000
+
+
+class _KEYBDINPUT(ctypes.Structure):
+    _fields_ = [("wVk", wintypes.WORD), ("wScan", wintypes.WORD), ("dwFlags", wintypes.DWORD),
+                ("time", wintypes.DWORD), ("dwExtraInfo", ctypes.c_size_t)]
+
+
+class _MOUSEINPUT(ctypes.Structure):
+    _fields_ = [("dx", wintypes.LONG), ("dy", wintypes.LONG), ("mouseData", wintypes.DWORD),
+                ("dwFlags", wintypes.DWORD), ("time", wintypes.DWORD), ("dwExtraInfo", ctypes.c_size_t)]
+
+
+class _INPUTUNION(ctypes.Union):
+    _fields_ = [("ki", _KEYBDINPUT), ("mi", _MOUSEINPUT)]
+
+
+class _INPUT(ctypes.Structure):
+    _fields_ = [("type", wintypes.DWORD), ("union", _INPUTUNION)]
+
+
+def _send_input(*inputs):
+    array = (_INPUT * len(inputs))(*inputs)
+    if ctypes.windll.user32.SendInput(len(inputs), array, ctypes.sizeof(_INPUT)) != len(inputs):
+        raise OSError("SendInput was blocked by another thread")
+
+
+# Virtual-key code and "extended key" flag for the named keys send_hotkey_raw
+# supports besides single letters/digits. The modifiers are the left-hand
+# keys a physical keyboard reports, not the generic VK_SHIFT/VK_CONTROL/
+# VK_MENU that pyautogui sends.
+_RAW_KEYS = {"win": (0x5B, True), "shift": (0xA0, False), "ctrl": (0xA2, False), "alt": (0xA4, False), "esc": (0x1B, False)}
+
+
+def _key_input(key, up):
+    if key in _RAW_KEYS:
+        vk, extended = _RAW_KEYS[key]
+    elif len(key) == 1 and key.isalnum():
+        vk, extended = ord(key.upper()), False
+    else:
+        raise ValueError(f"Unknown key {key!r}")
+    scan = ctypes.windll.user32.MapVirtualKeyW(vk, 0)  # MAPVK_VK_TO_VSC
+    flags = (_KEYEVENTF_KEYUP if up else 0) | (_KEYEVENTF_EXTENDEDKEY if extended else 0)
+    return _INPUT(type=_INPUT_KEYBOARD, union=_INPUTUNION(ki=_KEYBDINPUT(vk, scan, flags, 0, 0)))
+
+
+def send_hotkey_raw(*keys):
+    """Like send_hotkey, but sent the way a physical keyboard sends it: through
+    SendInput, with real scan codes and the left-hand modifier keys - for
+    combos Windows ignores from send_hotkey. Confirmed live (2026-11-11):
+    Win+Shift+S didn't open the snipping overlay from send_hotkey (pyautogui's
+    keybd_event sends scan code 0 and the generic VK_SHIFT), but did from
+    this. Win+D and Win+<digit> do work from send_hotkey (show_desktop,
+    toggle_outlook). Supports single letters/digits plus "win", "shift",
+    "ctrl", "alt" and "esc"."""
+    downs = [_key_input(key, up=False) for key in keys]
+    ups = [_key_input(key, up=True) for key in reversed(keys)]
+    _send_input(*downs, *ups)
+
+
+def _mouse_input(x, y, flags=0):
+    left, top, width, height = (ctypes.windll.user32.GetSystemMetrics(i) for i in (76, 77, 78, 79))
+    # SendInput's absolute coordinates run 0-65535 across the virtual desktop.
+    # Rounded up, so that Windows rounding them back down lands on (x, y).
+    dx = ((x - left) * 65536 + width - 1) // width
+    dy = ((y - top) * 65536 + height - 1) // height
+    mouse = _MOUSEINPUT(dx, dy, 0, _MOUSEEVENTF_MOVE_ABSOLUTE | flags, 0, 0)
+    return _INPUT(type=_INPUT_MOUSE, union=_INPUTUNION(mi=mouse))
+
+
+def drag(start, end, steps=20, duration=0.2):
+    """Drag with the left mouse button from `start` to `end` - (x, y) screen
+    coordinates, on any monitor - via SendInput: press at `start`, move there
+    in `steps` even steps over `duration` seconds, release at `end`.
+
+    Not pyautogui's dragTo, for two reasons. Its fail-safe raises whenever the
+    cursor sits in a corner of the primary screen, which a drag along a screen
+    edge can hit mid-drag - leaving the button held down. And its moves are
+    SetCursorPos jumps, where these are real input events, the same as a
+    physical mouse's. The release goes out even if a move fails, so the button
+    can't be left held down either way."""
+    _send_input(_mouse_input(*start, _MOUSEEVENTF_LEFTDOWN))
+    try:
+        for step in range(1, steps + 1):
+            time.sleep(duration / steps)
+            _send_input(_mouse_input(start[0] + (end[0] - start[0]) * step // steps,
+                                     start[1] + (end[1] - start[1]) * step // steps))
+    finally:
+        _send_input(_mouse_input(*end, _MOUSEEVENTF_LEFTUP))
